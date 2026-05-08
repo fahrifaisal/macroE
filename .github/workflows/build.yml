@@ -1,0 +1,20 @@
+name: Ekey Build
+on: [push] # Setiap kamu update kode, dia akan build otomatis
+
+jobs:
+  build_windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compile C++ to EXE
+        # Kita pakai g++ bawaan image windows-latest GitHub
+        # -static agar .exe bisa jalan di PC mana pun tanpa butuh DLL tambahan
+        run: g++ macro.cpp -o Ekey.exe -static -luser32
+
+      - name: Simpan Hasil EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Macro-Production
+          path: Ekey.exe
