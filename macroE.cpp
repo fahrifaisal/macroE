@@ -43,7 +43,7 @@ int main() {
         }
 
         // Tombol Panic/Exit menggunakan Angka 0 (0x30)
-        if (GetAsyncKeyState(0x30)) {
+        if (GetAsyncKeyState(0x30) & 0x8000) {
             // Pastikan semua tombol dilepas sebelum exit
             keybd_event(0x57, 0, KEYEVENTF_KEYUP, 0);
             keybd_event(0x45, 0, KEYEVENTF_KEYUP, 0);
