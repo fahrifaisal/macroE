@@ -11,10 +11,10 @@ jobs:
       - name: Compile C++ to EXE
         # Kita pakai g++ bawaan image windows-latest GitHub
         # -static agar .exe bisa jalan di PC mana pun tanpa butuh DLL tambahan
-        run: g++ macro.cpp -o Ekey.exe -static -luser32
+        run: g++ macroE.cpp -o Ekey.exe -static -luser32
 
       - name: Simpan Hasil EXE
         uses: actions/upload-artifact@v4
         with:
-          name: Macro-Production
+          name: Key-Production
           path: Ekey.exe
