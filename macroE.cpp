@@ -2,38 +2,34 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <random> // Library untuk angka acak
 
 int main() {
-    // Default delay diubah ke 100ms
-    int holdDelay = 100;
-    int spamDelay = 100;
+    int holdDelay = 150;
+    int spamDelay = 160;
     bool active = false;
 
-    // Membaca file config.txt
+    // Setup Random Number Generator
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
     std::ifstream configFile("config.txt");
     if (configFile.is_open()) {
         std::string line;
         while (getline(configFile, line)) {
-            if (line.find("HOLD_DELAY=") != std::string::npos) {
-                holdDelay = std::stoi(line.substr(11));
-            } else if (line.find("SPAM_DELAY=") != std::string::npos) {
-                spamDelay = std::stoi(line.substr(11));
-            }
+            if (line.find("HOLD_DELAY=") != std::string::npos) holdDelay = std::stoi(line.substr(11));
+            else if (line.find("SPAM_DELAY=") != std::string::npos) spamDelay = std::stoi(line.substr(11));
         }
         configFile.close();
-        std::cout << "Config loaded: Hold " << holdDelay << "ms, Spam " << spamDelay << "ms" << std::endl;
-    } else {
-        std::cout << "config.txt tidak ditemukan, menggunakan default (100ms)." << std::endl;
     }
 
-    std::cout << "F4: Toggle ON/OFF | Angka 0: MATIKAN PROGRAM & EXIT" << std::endl;
+    std::cout << "F4: Toggle ON/OFF | Angka 0: EXIT" << std::endl;
 
     while (true) {
-        // Toggle ON/OFF dengan F4
         if (GetAsyncKeyState(VK_F4) & 1) {
             active = !active;
             if (active) {
-                std::cout << "Status: ON (W Hold + E Spam)" << std::endl;
+                std::cout << "Status: ON" << std::endl;
                 keybd_event(0x57, 0, 0, 0); // W Down
             } else {
                 std::cout << "Status: OFF" << std::endl;
@@ -42,20 +38,21 @@ int main() {
             }
         }
 
-        // Tombol Panic/Exit menggunakan Angka 0 (0x30)
         if (GetAsyncKeyState(0x30) & 0x8000) {
-            // Pastikan semua tombol dilepas sebelum exit
             keybd_event(0x57, 0, KEYEVENTF_KEYUP, 0);
             keybd_event(0x45, 0, KEYEVENTF_KEYUP, 0);
-            std::cout << "Panic Button! Program closed." << std::endl;
             return 0;
         }
 
         if (active) {
+            // Membuat variasi delay +/- 20% dari nilai asli
+            std::uniform_int_distribution<> distHold(holdDelay - (holdDelay * 0.2), holdDelay + (holdDelay * 0.2));
+            std::uniform_int_distribution<> distSpam(spamDelay - (spamDelay * 0.2), spamDelay + (spamDelay * 0.2));
+
             keybd_event(0x45, 0, 0, 0); // E Down
-            Sleep(holdDelay);           
+            Sleep(distHold(gen));       // Delay acak untuk menahan E
             keybd_event(0x45, 0, KEYEVENTF_KEYUP, 0); // E Up
-            Sleep(spamDelay);           
+            Sleep(distSpam(gen));       // Delay acak antar spam E
         } else {
             Sleep(100); 
         }
