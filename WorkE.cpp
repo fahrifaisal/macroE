@@ -58,7 +58,7 @@ void TapKeyNatural(WORD scanCode, const std::string& keyName) {
     SendKeyByScanCode(scanCode, false);
 }
 
-// Fungsi khusus untuk Double Tap X (Batal Kerja & Turunkan Tangan)
+// Fungsi khusus untuk Quick Double-Tap X (Batal Kerja & Turunkan Tangan)
 void CancelAnimation(const std::string& contextLog) {
     Log(contextLog);
     std::random_device rd;
@@ -91,6 +91,8 @@ void MacroThread() {
 
     std::uniform_int_distribution<> delay1Sec(1200, 1500);   
     std::uniform_int_distribution<> delay6Sec(6000, 6300);   
+    // Distribusi waktu tunggu normal: 45 menit (2.700.000 ms) hingga 49 menit (2.940.000 ms)
+    std::uniform_int_distribution<> normalWaitDist(2700000, 2940000); 
 
     while (isRunning) {
         if (isToggled && currentJob != 0) {
@@ -103,16 +105,25 @@ void MacroThread() {
                 // Khusus Menambang: Equip palu dulu
                 TapKeyNatural(SC_1, "1 (Equip Palu Tambang)");
                 Log("Status -> Menunggu animasi equip palu...");
-                if (!InterruptibleSleep(1500)) continue; // Tunggu animasi palu keluar
+                if (!InterruptibleSleep(1500)) continue; 
             }
 
             TapKeyNatural(SC_E, "E (Mulai Kerja)");
 
             // ==========================================
-            // LANGKAH 2: TUNGGU KERJA (30 Mnt / 5 Dtk)
+            // LANGKAH 2: TUNGGU KERJA (45-49 Mnt / 5 Dtk)
             // ==========================================
-            int waitTime = isTestMode ? 5000 : 1800000;
-            std::string modeText = isTestMode ? "5 detik [TEST MODE]" : "30 menit [NORMAL MODE]";
+            int waitTime;
+            std::string modeText;
+
+            if (isTestMode) {
+                waitTime = 5000;
+                modeText = "5 detik [TEST MODE]";
+            } else {
+                waitTime = normalWaitDist(gen);
+                int minutes = waitTime / 60000;
+                modeText = std::to_string(minutes) + " menit [NORMAL MODE]";
+            }
             
             Log("Status -> Sedang bekerja. Menunggu " + modeText + "...");
             if (!InterruptibleSleep(waitTime)) continue; 
@@ -141,6 +152,9 @@ void MacroThread() {
             Log("Status -> Proses minum berjalan, menunggu 6 detik...");
             if (!InterruptibleSleep(delay6Sec(gen))) continue;
 
+            // ==========================================
+            // LANGKAH 5: CLEAR ANIMASI MAKAN/MINUM
+            // ==========================================
             CancelAnimation("Status -> Waktu selesai. Double-Tap X (Clear Animation)...");
             Log("=== Siklus Selesai, Mengulang Kembali ===");
             
@@ -178,11 +192,10 @@ int main() {
 
     std::thread macro(MacroThread);
     
-    // Variabel Debounce agar tombol tidak terdeteksi ganda
     bool key0 = false, key1 = false, key2 = false, key6 = false, key7 = false;
 
     while (isRunning) {
-        // Cek tombol 9 (Exit) - Berlaku di mana saja
+        // Cek tombol 9 (Exit)
         if (GetAsyncKeyState(0x39) & 0x8000) {
             Log("Menutup program...");
             isRunning = false;
@@ -191,10 +204,8 @@ int main() {
         }
 
         if (currentJob == 0) {
-            // ==============================
-            // MODE MENU: Menunggu Input 1 / 2
-            // ==============================
-            if (GetAsyncKeyState(0x31) & 0x8000) { // Angka 1
+            // MODE MENU
+            if (GetAsyncKeyState(0x31) & 0x8000) { 
                 if (!key1) {
                     currentJob = 1;
                     Log("BERHASIL MEMILIH: [1] Recycle Worker");
@@ -203,7 +214,7 @@ int main() {
                 }
             } else { key1 = false; }
 
-            if (GetAsyncKeyState(0x32) & 0x8000) { // Angka 2
+            if (GetAsyncKeyState(0x32) & 0x8000) { 
                 if (!key2) {
                     currentJob = 2;
                     Log("BERHASIL MEMILIH: [2] Menambang");
@@ -213,15 +224,11 @@ int main() {
             } else { key2 = false; }
 
         } else {
-            // ==============================
-            // MODE KERJA: Kontrol 0, 6, 7
-            // ==============================
-            
-            // Cek tombol 6 (Kembali ke menu)
+            // MODE KERJA
             if (GetAsyncKeyState(0x36) & 0x8000) {
                 if (!key6) {
-                    isToggled = false; // Matikan makro jika sedang jalan
-                    currentJob = 0;    // Reset ke menu
+                    isToggled = false; 
+                    currentJob = 0;    
                     Log("KEMBALI KE MENU UTAMA. Makro dihentikan.");
                     CancelAnimation("Force Cancel Animasi - KEMBALI KE MENU");
                     PrintMenu();
@@ -229,17 +236,15 @@ int main() {
                 }
             } else { key6 = false; }
 
-            // Cek tombol 7 (Toggle Test Mode)
             if (GetAsyncKeyState(0x37) & 0x8000) {
                 if (!key7) {
                     isTestMode = !isTestMode;
                     if (isTestMode) Log("TEST MODE AKTIF -> Durasi tunggu diubah menjadi 5 Detik.");
-                    else Log("TEST MODE NONAKTIF -> Durasi tunggu kembali ke 30 Menit.");
+                    else Log("TEST MODE NONAKTIF -> Durasi tunggu kembali ke 45-49 Menit.");
                     key7 = true;
                 }
             } else { key7 = false; }
 
-            // Cek tombol 0 (Toggle Macro)
             if (GetAsyncKeyState(0x30) & 0x8000) {
                 if (!key0) {
                     isToggled = !isToggled;
@@ -254,7 +259,7 @@ int main() {
             } else { key0 = false; }
         }
 
-        Sleep(10); // Ringankan pemakaian CPU
+        Sleep(10); 
     }
 
     if (macro.joinable()) {
