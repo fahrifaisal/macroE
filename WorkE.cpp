@@ -56,18 +56,18 @@ void TapKeyNatural(WORD scanCode, const std::string& keyName) {
     SendKeyByScanCode(scanCode, false);
 }
 
-// Fungsi khusus untuk Double Tap X (Membatalkan Animasi)
+// Fungsi khusus untuk Double Tap X (Batal Kerja & Turunkan Tangan)
 void CancelAnimation(const std::string& contextLog) {
     Log(contextLog);
     
     std::random_device rd;
     std::mt19937 gen(rd());
-    // Jeda antara klik X pertama dan kedua (150ms - 300ms handsup turun)
-    std::uniform_int_distribution<> doubleTapDelay(150, 300); 
+    // Jeda dipercepat untuk double-tap cepat (50ms - 150ms)
+    std::uniform_int_distribution<> doubleTapDelay(50, 150); 
 
-    TapKeyNatural(SC_X, "X (Cancel 1 - Request)");
-    Sleep(doubleTapDelay(gen)); // Tunggu konfirmasi UI game
-    TapKeyNatural(SC_X, "X (Cancel 2 - Confirm)");
+    TapKeyNatural(SC_X, "X (Cancel Animasi / Hands Up)");
+    Sleep(doubleTapDelay(gen)); // Jeda sangat singkat
+    TapKeyNatural(SC_X, "X (Stop Hands Up)");
 }
 
 // Fungsi Sleep yang bisa di-cancel kapan saja
@@ -89,7 +89,7 @@ void MacroThread() {
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    std::uniform_int_distribution<> delay1Sec(1000, 1200);   
+    std::uniform_int_distribution<> delay1Sec(1200, 1500);   
     std::uniform_int_distribution<> delay6Sec(6000, 6300);   
 
     while (isRunning) {
@@ -106,10 +106,10 @@ void MacroThread() {
             Log("Status -> Sedang bekerja. Menunggu " + modeText + "...");
             if (!InterruptibleSleep(waitTime)) continue; 
 
-            // 3. Batal Animasi (Double Tap X)
-            CancelAnimation("Status -> Waktu tunggu selesai. Melakukan Double-Tap X untuk batal...");
+            // 3. Batal Animasi (Double Tap X Cepat)
+            CancelAnimation("Status -> Waktu tunggu selesai. Double-Tap X (Hands Up & Turun)...");
 
-            // 4. Jeda 1 detik
+            // 4. Jeda 1 detik sebelum makan
             if (!InterruptibleSleep(delay1Sec(gen))) continue;
 
             // 5. Makan (Angka 4)
@@ -122,6 +122,8 @@ void MacroThread() {
             Log("Status -> Proses minum berjalan, menunggu 6 detik...");
             if (!InterruptibleSleep(delay6Sec(gen))) continue;
 
+            // 7. Batal Animasi (Double Tap X Cepat)
+            CancelAnimation("Status -> Waktu tunggu selesai. Double-Tap X (Hands Up & Turun)...");
             Log("=== Siklus Makan & Minum Selesai ===");
             
         } else {
@@ -134,7 +136,7 @@ int main() {
     std::cout << "========================================" << std::endl;
     std::cout << "  Siklus Kerja & Survival (GTA V/FiveM)" << std::endl;
     std::cout << "========================================" << std::endl;
-    std::cout << "Fitur: Double-Tap Konfirmasi Batal (X)" << std::endl;
+    std::cout << "Fitur: Quick Double-Tap X (Hands Up Batal)" << std::endl;
     std::cout << "[0] - Toggle Makro ON/OFF" << std::endl;
     std::cout << "[7] - Toggle Test Mode (Jeda 5 Detik)" << std::endl;
     std::cout << "[9] - Exit Program" << std::endl;
@@ -149,7 +151,7 @@ int main() {
         if (GetAsyncKeyState(0x39) & 0x8000) {
             Log("Menutup program...");
             isRunning = false;
-            CancelAnimation("Force Cancel Animasi (Double Tap X) - EXIT");
+            CancelAnimation("Force Cancel Animasi (Quick Double Tap X) - EXIT");
             break;
         }
 
@@ -176,7 +178,7 @@ int main() {
                     Log("TOGGLE ON -> Mengaktifkan makro.");
                 } else {
                     Log("TOGGLE OFF -> Makro dihentikan.");
-                    CancelAnimation("Force Cancel Animasi (Double Tap X) - OFF");
+                    CancelAnimation("Force Cancel Animasi (Quick Double Tap X) - OFF");
                 }
                 zeroWasPressed = true;
             }
