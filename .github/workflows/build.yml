@@ -1,5 +1,8 @@
-name: Ekey Build
-on: [push] 
+name: Macros Build
+
+# Mengubah trigger dari otomatis (push) menjadi manual
+on: 
+  workflow_dispatch: 
 
 env:
   # Menghilangkan warning Node.js 20 deprecation
@@ -12,11 +15,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Compile C++ to EXE
-        run: g++ macroE.cpp -o Ekey.exe -static -luser32
+      - name: Compile macroE (Spam E)
+        run: g++ macroE.cpp -o WalkE.exe -static -luser32
+
+      - name: Compile WorkE (Kerja & Survival)
+        run: g++ WorkE.cpp -o WorkE.exe -static -luser32
 
       - name: Simpan Hasil EXE
         uses: actions/upload-artifact@v4
         with:
-          name: Key-Production
-          path: Ekey.exe
+          name: Macro-Production
+          path: |
+            WalkE.exe
+            WorkE.exe
