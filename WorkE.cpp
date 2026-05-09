@@ -9,7 +9,7 @@
 
 std::atomic<bool> isRunning(true);
 std::atomic<bool> isToggled(false);
-std::atomic<bool> isTestMode(false); // Variabel untuk Test Mode
+std::atomic<bool> isTestMode(false); 
 
 // Konstanta Scan Codes untuk DirectInput Games
 const WORD SC_E = 0x12;
@@ -44,11 +44,11 @@ void SendKeyByScanCode(WORD scanCode, bool isKeyDown) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-// Menekan tombol dengan durasi tahan (hold) acak layaknya manusia
+// Menekan tombol dengan durasi tahan (hold) acak
 void TapKeyNatural(WORD scanCode, const std::string& keyName) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> holdDist(30, 80); // Tahan tombol 30-80ms
+    std::uniform_int_distribution<> holdDist(30, 80); 
 
     Log("Input -> Menekan tombol: " + keyName);
     SendKeyByScanCode(scanCode, true);
@@ -56,14 +56,28 @@ void TapKeyNatural(WORD scanCode, const std::string& keyName) {
     SendKeyByScanCode(scanCode, false);
 }
 
-// Fungsi Sleep yang bisa di-cancel kapan saja menggunakan tombol toggle/exit
+// Fungsi khusus untuk Double Tap X (Membatalkan Animasi)
+void CancelAnimation(const std::string& contextLog) {
+    Log(contextLog);
+    
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    // Jeda antara klik X pertama dan kedua (150ms - 300ms handsup turun)
+    std::uniform_int_distribution<> doubleTapDelay(150, 300); 
+
+    TapKeyNatural(SC_X, "X (Cancel 1 - Request)");
+    Sleep(doubleTapDelay(gen)); // Tunggu konfirmasi UI game
+    TapKeyNatural(SC_X, "X (Cancel 2 - Confirm)");
+}
+
+// Fungsi Sleep yang bisa di-cancel kapan saja
 bool InterruptibleSleep(int targetMilliseconds) {
     int elapsed = 0;
-    const int step = 100; // Cek status setiap 100ms
+    const int step = 100; 
     
     while (elapsed < targetMilliseconds) {
         if (!isRunning || !isToggled) {
-            return false; // Interupsi terjadi, batalkan sleep
+            return false; 
         }
         Sleep(step);
         elapsed += step;
@@ -75,9 +89,8 @@ void MacroThread() {
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    // Distribusi pengacak delay untuk membuat gerakan tidak statis
-    std::uniform_int_distribution<> delay1Sec(1000, 1200);   // Jeda 1 detik (+ random)
-    std::uniform_int_distribution<> delay6Sec(6000, 6300);   // Jeda 6 detik (+ random)
+    std::uniform_int_distribution<> delay1Sec(1000, 1200);   
+    std::uniform_int_distribution<> delay6Sec(6000, 6300);   
 
     while (isRunning) {
         if (isToggled) {
@@ -86,16 +99,15 @@ void MacroThread() {
             // 1. Mulai Kerja
             TapKeyNatural(SC_E, "E (Mulai Kerja)");
 
-            // 2. Tunggu sesuai mode (Test Mode = 5 detik, Normal = 30 menit)
+            // 2. Tunggu sesuai mode
             int waitTime = isTestMode ? 5000 : 1800000;
             std::string modeText = isTestMode ? "5 detik [TEST MODE]" : "30 menit [NORMAL MODE]";
             
             Log("Status -> Sedang bekerja. Menunggu " + modeText + "...");
             if (!InterruptibleSleep(waitTime)) continue; 
 
-            // 3. Batal Animasi
-            Log("Status -> Waktu tunggu selesai. Membatalkan animasi kerja...");
-            TapKeyNatural(SC_X, "X (Cancel Animasi Kerja)");
+            // 3. Batal Animasi (Double Tap X)
+            CancelAnimation("Status -> Waktu tunggu selesai. Melakukan Double-Tap X untuk batal...");
 
             // 4. Jeda 1 detik
             if (!InterruptibleSleep(delay1Sec(gen))) continue;
@@ -113,7 +125,6 @@ void MacroThread() {
             Log("=== Siklus Makan & Minum Selesai ===");
             
         } else {
-            // Idle state
             Sleep(100);
         }
     }
@@ -123,6 +134,7 @@ int main() {
     std::cout << "========================================" << std::endl;
     std::cout << "  Siklus Kerja & Survival (GTA V/FiveM)" << std::endl;
     std::cout << "========================================" << std::endl;
+    std::cout << "Fitur: Double-Tap Konfirmasi Batal (X)" << std::endl;
     std::cout << "[0] - Toggle Makro ON/OFF" << std::endl;
     std::cout << "[7] - Toggle Test Mode (Jeda 5 Detik)" << std::endl;
     std::cout << "[9] - Exit Program" << std::endl;
@@ -137,7 +149,7 @@ int main() {
         if (GetAsyncKeyState(0x39) & 0x8000) {
             Log("Menutup program...");
             isRunning = false;
-            TapKeyNatural(SC_X, "X (Force Cancel Animasi - Exit)");
+            CancelAnimation("Force Cancel Animasi (Double Tap X) - EXIT");
             break;
         }
 
@@ -164,7 +176,7 @@ int main() {
                     Log("TOGGLE ON -> Mengaktifkan makro.");
                 } else {
                     Log("TOGGLE OFF -> Makro dihentikan.");
-                    TapKeyNatural(SC_X, "X (Force Cancel Animasi - OFF)");
+                    CancelAnimation("Force Cancel Animasi (Double Tap X) - OFF");
                 }
                 zeroWasPressed = true;
             }
