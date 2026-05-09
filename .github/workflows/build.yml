@@ -1,5 +1,9 @@
 name: Ekey Build
-on: [push] # Setiap kamu update kode, dia akan build otomatis
+on: [push] 
+
+env:
+  # Menghilangkan warning Node.js 20 deprecation
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build_windows:
@@ -9,8 +13,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Compile C++ to EXE
-        # Kita pakai g++ bawaan image windows-latest GitHub
-        # -static agar .exe bisa jalan di PC mana pun tanpa butuh DLL tambahan
         run: g++ macroE.cpp -o Ekey.exe -static -luser32
 
       - name: Simpan Hasil EXE
