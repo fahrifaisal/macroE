@@ -9,6 +9,7 @@
 
 std::atomic<bool> isRunning(true);
 std::atomic<bool> isToggled(false);
+std::atomic<bool> isTestMode(false); // Variabel untuk Test Mode
 
 // Konstanta Scan Codes untuk DirectInput Games
 const WORD SC_E = 0x12;
@@ -45,7 +46,6 @@ void SendKeyByScanCode(WORD scanCode, bool isKeyDown) {
 
 // Menekan tombol dengan durasi tahan (hold) acak layaknya manusia
 void TapKeyNatural(WORD scanCode, const std::string& keyName) {
-    // Randomizer lokal untuk thread-safety
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> holdDist(30, 80); // Tahan tombol 30-80ms
@@ -86,12 +86,15 @@ void MacroThread() {
             // 1. Mulai Kerja
             TapKeyNatural(SC_E, "E (Mulai Kerja)");
 
-            // 2. Tunggu 30 Menit (1.800.000 ms)
-            Log("Status -> Sedang bekerja. Menunggu 30 menit...");
-            if (!InterruptibleSleep(1800000)) continue; 
+            // 2. Tunggu sesuai mode (Test Mode = 5 detik, Normal = 30 menit)
+            int waitTime = isTestMode ? 5000 : 1800000;
+            std::string modeText = isTestMode ? "5 detik [TEST MODE]" : "30 menit [NORMAL MODE]";
+            
+            Log("Status -> Sedang bekerja. Menunggu " + modeText + "...");
+            if (!InterruptibleSleep(waitTime)) continue; 
 
             // 3. Batal Animasi
-            Log("Status -> 30 Menit berlalu. Membatalkan animasi kerja...");
+            Log("Status -> Waktu tunggu selesai. Membatalkan animasi kerja...");
             TapKeyNatural(SC_X, "X (Cancel Animasi Kerja)");
 
             // 4. Jeda 1 detik
@@ -108,10 +111,9 @@ void MacroThread() {
             if (!InterruptibleSleep(delay6Sec(gen))) continue;
 
             Log("=== Siklus Makan & Minum Selesai ===");
-            // Kembali ke atas loop (akan langsung menekan E lagi karena isToggled masih true)
             
         } else {
-            // Idle state, menghemat CPU
+            // Idle state
             Sleep(100);
         }
     }
@@ -121,24 +123,40 @@ int main() {
     std::cout << "========================================" << std::endl;
     std::cout << "  Siklus Kerja & Survival (GTA V/FiveM)" << std::endl;
     std::cout << "========================================" << std::endl;
-    std::cout << "[0] - Toggle ON/OFF (Mulai/Berhenti Siklus)" << std::endl;
+    std::cout << "[0] - Toggle Makro ON/OFF" << std::endl;
+    std::cout << "[7] - Toggle Test Mode (Jeda 5 Detik)" << std::endl;
     std::cout << "[9] - Exit Program" << std::endl;
     std::cout << "----------------------------------------" << std::endl;
 
     std::thread macro(MacroThread);
     bool zeroWasPressed = false;
+    bool sevenWasPressed = false;
 
     while (isRunning) {
         // Cek tombol 9 (Exit)
         if (GetAsyncKeyState(0x39) & 0x8000) {
             Log("Menutup program...");
             isRunning = false;
-            // Force tekan X sekali saat exit
             TapKeyNatural(SC_X, "X (Force Cancel Animasi - Exit)");
             break;
         }
 
-        // Cek tombol 0 (Toggle)
+        // Cek tombol 7 (Toggle Test Mode)
+        if (GetAsyncKeyState(0x37) & 0x8000) {
+            if (!sevenWasPressed) {
+                isTestMode = !isTestMode;
+                if (isTestMode) {
+                    Log("TEST MODE AKTIF -> Durasi tunggu diubah menjadi 5 Detik.");
+                } else {
+                    Log("TEST MODE NONAKTIF -> Durasi tunggu kembali ke 30 Menit.");
+                }
+                sevenWasPressed = true;
+            }
+        } else {
+            sevenWasPressed = false;
+        }
+
+        // Cek tombol 0 (Toggle Macro)
         if (GetAsyncKeyState(0x30) & 0x8000) {
             if (!zeroWasPressed) {
                 isToggled = !isToggled;
@@ -146,7 +164,6 @@ int main() {
                     Log("TOGGLE ON -> Mengaktifkan makro.");
                 } else {
                     Log("TOGGLE OFF -> Makro dihentikan.");
-                    // Force tekan X sekali saat toggle dimatikan
                     TapKeyNatural(SC_X, "X (Force Cancel Animasi - OFF)");
                 }
                 zeroWasPressed = true;
@@ -155,10 +172,9 @@ int main() {
             zeroWasPressed = false;
         }
 
-        Sleep(10); // Loop utama berjalan ringan
+        Sleep(10);
     }
 
-    // Pastikan thread tertutup dengan aman
     if (macro.joinable()) {
         macro.join();
     }
