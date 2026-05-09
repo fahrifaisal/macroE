@@ -4,88 +4,101 @@
 #include <thread>
 #include <atomic>
 
-// Menggunakan atomic untuk thread safety
 std::atomic<bool> isRunning(true);
 std::atomic<bool> isToggled(false);
 
+// Fungsi untuk mengirim input level Hardware (Scan Code) untuk DirectInput Games
+void SendKeyByScanCode(WORD scanCode, bool isKeyDown) {
+    INPUT input = {0};
+    input.type = INPUT_KEYBOARD;
+    input.ki.wScan = scanCode;
+    input.ki.time = 0;
+    input.ki.dwExtraInfo = 0;
+    input.ki.wVk = 0; // Wajib 0 agar sistem membaca Scan Code, bukan Virtual Key
+
+    if (isKeyDown) {
+        input.ki.dwFlags = KEYEVENTF_SCANCODE; // Key Press
+    } else {
+        input.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP; // Key Release
+    }
+    SendInput(1, &input, sizeof(INPUT));
+}
+
 void MacroThread() {
-    // Setup Random Number Generator untuk delay 200-300ms
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> delayDist(200, 300);
 
     bool wIsHeld = false;
 
+    // Scan Codes
+    const WORD SCANCODE_W = 0x11;
+    const WORD SCANCODE_E = 0x12;
+
     while (isRunning) {
         if (isToggled) {
-            // Jika toggle ON dan W belum ditahan, tekan dan tahan W
+            // Tahan W
             if (!wIsHeld) {
-                keybd_event(0x57, 0, 0, 0); // 0x57 adalah VK code untuk 'W' (Key Down)
+                SendKeyByScanCode(SCANCODE_W, true);
                 wIsHeld = true;
             }
             
-            // Spam E (0x45 adalah VK code untuk 'E')
-            keybd_event(0x45, 0, 0, 0); // E Down
-            Sleep(20);                  // Delay singkat agar game/sistem mencatat input
-            keybd_event(0x45, 0, KEYEVENTF_KEYUP, 0); // E Up
+            // Spam E
+            SendKeyByScanCode(SCANCODE_E, true);   // E Down
+            Sleep(25);                             // Delay tekan agak lama agar FiveM sempat mendeteksi
+            SendKeyByScanCode(SCANCODE_E, false);  // E Up
 
-            // Random delay antara 200ms - 300ms
+            // Random delay
             int randomDelay = delayDist(gen);
             Sleep(randomDelay);
 
         } else {
-            // Jika toggle OFF, tapi W masih tertahan, lepaskan W
+            // Lepas W jika toggle OFF
             if (wIsHeld) {
-                keybd_event(0x57, 0, KEYEVENTF_KEYUP, 0); // W Up
+                SendKeyByScanCode(SCANCODE_W, false);
                 wIsHeld = false;
             }
-            // Sleep sebentar saat idle untuk menghemat pemakaian CPU
             Sleep(50);
         }
     }
     
-    // Safety: Pastikan tombol W dilepas saat program ditutup menggunakan 9
+    // Safety release sebelum exit
     if (wIsHeld) {
-        keybd_event(0x57, 0, KEYEVENTF_KEYUP, 0);
+        SendKeyByScanCode(SCANCODE_W, false);
     }
 }
 
 int main() {
-    std::cout << "=== Macro Script Berjalan ===" << std::endl;
+    std::cout << "=== Macro Script GTA V / FiveM ===" << std::endl;
     std::cout << "[0] - Toggle ON/OFF" << std::endl;
     std::cout << "[9] - Exit Program" << std::endl;
-    std::cout << "=============================" << std::endl;
+    std::cout << "==================================" << std::endl;
 
-    // Memulai thread untuk makro
     std::thread macro(MacroThread);
-
     bool zeroWasPressed = false;
 
     while (isRunning) {
-        // Cek tombol 9 (0x39) untuk keluar
+        // Cek tombol 9 (Exit)
         if (GetAsyncKeyState(0x39) & 0x8000) {
             std::cout << "Menutup program..." << std::endl;
             isRunning = false;
             break;
         }
 
-        // Cek tombol 0 (0x30) untuk toggle
+        // Cek tombol 0 (Toggle)
         if (GetAsyncKeyState(0x30) & 0x8000) {
-            // Memastikan toggle hanya berubah sekali per satu kali tekan (debounce)
             if (!zeroWasPressed) {
                 isToggled = !isToggled;
-                std::cout << "Status: " << (isToggled ? "ON (Holding W, Spamming E)" : "OFF") << std::endl;
+                std::cout << "Status: " << (isToggled ? "ON (Maju & Spam E)" : "OFF") << std::endl;
                 zeroWasPressed = true;
             }
         } else {
             zeroWasPressed = false;
         }
 
-        // Sleep singkat untuk menghemat CPU pada loop utama
         Sleep(10);
     }
 
-    // Tunggu thread makro selesai sebelum menutup aplikasi
     if (macro.joinable()) {
         macro.join();
     }
